@@ -39,12 +39,10 @@ class MainWindow:
             logo_path = os.path.join("resources", "icon.png")
             if os.path.exists(logo_path):
                 logo_image = Image.open(logo_path)
-                # Масштабируем до ширины 300px с сохранением пропорций
                 max_width = 300
                 ratio = max_width / logo_image.width
                 new_size = (int(logo_image.width * ratio), int(logo_image.height * ratio))
                 logo_image = logo_image.resize(new_size, resample=Image.Resampling.LANCZOS)
-
                 self.logo_photo = ImageTk.PhotoImage(logo_image)
                 tk.Label(master, image=self.logo_photo, bg=DEFAULT_BG).pack(pady=10)
             else:
@@ -59,9 +57,12 @@ class MainWindow:
         # --- Treeview с партнёрами ---
         columns = ("id", "name", "type", "rating", "legal_address", "inn",
                    "director_name", "phone", "email", "logo_url")
+        display_names = ("ID", "Наименование", "Тип", "Рейтинг", "Юридический адрес", "ИНН",
+                         "ФИО руководителя", "Телефон", "Email", "Логотип")
+
         self.tree = ttk.Treeview(master, columns=columns, show="headings")
-        for col in columns:
-            self.tree.heading(col, text=col)
+        for col, disp in zip(columns, display_names):
+            self.tree.heading(col, text=disp)
             self.tree.column(col, width=150, anchor="center")
         self.tree.pack(fill="both", expand=True, pady=10)
         self.tree.bind("<Double-1>", self.edit_partner_event)

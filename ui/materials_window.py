@@ -10,16 +10,17 @@ class MaterialsWindow(tk.Toplevel):
         self.master = master
         self.master.withdraw()  # Скрываем главную форму
         self.title("Материалы")
-        self.geometry("900x500")
+        self.geometry("1300x500")
         self.configure(bg=DEFAULT_BG)
 
         tk.Label(self, text="Список материалов", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
         # --- Таблица ---
         columns = ("id", "name", "type", "quantity_per_package", "unit", "cost", "stock_quantity")
+        display_names = ("ID", "Наименование", "Тип", "Количество в упаковке", "Единица измерения", "Стоимость (₽)", "На складе")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
-        for col in columns:
-            self.tree.heading(col, text=col)
+        for col, disp in zip(columns, display_names):
+            self.tree.heading(col, text=disp)
             self.tree.column(col, width=120, anchor="center")
         self.tree.pack(fill="both", expand=True)
 

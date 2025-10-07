@@ -10,15 +10,16 @@ class ServicesWindow(tk.Toplevel):
         self.master = master
         self.master.withdraw()
         self.title("Услуги")
-        self.geometry("1100x500")
+        self.geometry("1400x500")
         self.configure(bg=DEFAULT_BG)
 
         tk.Label(self, text="Список услуг", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
         columns = ("id", "code", "name", "type", "description", "min_cost", "time_norm", "estimated_cost")
+        display_names = ("ID", "Код", "Наименование", "Тип", "Описание", "Мин. стоимость (₽)", "Норма времени (ч)", "Расчётная стоимость (₽)")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
-        for col in columns:
-            self.tree.heading(col, text=col)
+        for col, disp in zip(columns, display_names):
+            self.tree.heading(col, text=disp)
             self.tree.column(col, width=130, anchor="center")
         self.tree.pack(fill="both", expand=True)
 

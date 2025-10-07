@@ -17,9 +17,10 @@ class OrdersWindow(tk.Toplevel):
         tk.Label(self, text="Список заказов", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
         columns = ("id", "partner_name", "manager_name", "created_at", "confirmed", "completed", "total_cost")
+        display_names = ("ID", "Партнёр", "Менеджер", "Дата создания", "Подтверждён", "Выполнен", "Общая стоимость (₽)")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
-        for col in columns:
-            self.tree.heading(col, text=col)
+        for col, disp in zip(columns, display_names):
+            self.tree.heading(col, text=disp)
             self.tree.column(col, width=160, anchor="center")
         self.tree.pack(fill="both", expand=True, pady=5)
         self.tree.bind("<Double-1>", self.edit_order_event)
