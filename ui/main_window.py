@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 from PIL import Image, ImageTk
 import os
 from logic.data_fetcher import get_partners
@@ -50,22 +50,36 @@ class MainWindow:
         # Панель кнопок
         button_frame = tk.Frame(master, bg=DEFAULT_BG)
         button_frame.pack(pady=5)
-        tk.Button(button_frame, text="Добавить партнёра", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.add_partner).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.edit_selected_partner).pack(side="left", padx=5)
+
+        self.add_partner_btn = tk.Button(button_frame, text="Добавить партнёра", bg=ACCENT_COLOR, fg="black",
+                                         font=FONT_SMALL, command=self.add_partner)
+        self.add_partner_btn.pack(side="left", padx=5)
+
+        self.edit_selected_partner_btn = tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, fg="black",
+                                                   font=FONT_SMALL, command=self.edit_selected_partner)
+        self.edit_selected_partner_btn.pack(side="left", padx=5)
+
         tk.Button(button_frame, text="История услуг", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, command=self.open_history_selected).pack(side="left", padx=5)
+
         tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, command=self.delete_selected_partner).pack(side="left", padx=5)
+
         tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, command=self.load_partners).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Материалы", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.open_materials).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Услуги", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.open_services).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Заказы", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.open_orders).pack(side="left", padx=5)
+
+        self.open_materials_btn = tk.Button(button_frame, text="Материалы", bg=ACCENT_COLOR, fg="black",
+                                            font=FONT_SMALL, command=self.open_materials)
+        self.open_materials_btn.pack(side="left", padx=5)
+
+        self.open_services_btn = tk.Button(button_frame, text="Услуги", bg=ACCENT_COLOR, fg="black",
+                                           font=FONT_SMALL, command=self.open_services)
+        self.open_services_btn.pack(side="left", padx=5)
+
+        self.open_orders_btn = tk.Button(button_frame, text="Заказы", bg=ACCENT_COLOR, fg="black",
+                                         font=FONT_SMALL, command=self.open_orders)
+        self.open_orders_btn.pack(side="left", padx=5)
+
         tk.Button(button_frame, text="Выход", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, command=self.master.destroy).pack(side="right", padx=5)
 
@@ -90,13 +104,25 @@ class MainWindow:
         self.selected_card = None
         self.load_partners()
 
+        # Скрываем кнопки для партнёров
+        if self.user[2] == "partner":
+            self.add_partner_btn.pack_forget()
+            self.edit_selected_partner_btn.pack_forget()
+            self.open_materials_btn.pack_forget()
+            self.open_services_btn.pack_forget()
+            self.open_orders_btn.pack_forget()
+
     # --- Загрузка партнёров ---
     def load_partners(self):
-        # Очистка
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
 
-        for partner in get_partners():
+        partners = get_partners()
+        # если пользователь — партнёр, показываем только свои карточки
+        if self.user[2] == "partner" and self.user[3]:
+            partners = [p for p in partners if p[0] == self.user[3]]
+
+        for partner in partners:
             self.add_partner_card(partner)
 
     # --- Создание карточки партнёра ---
@@ -114,7 +140,6 @@ class MainWindow:
             c.selected = True
             self.selected_card = c
 
-        # Проброс клика на всю карточку
         card.bind("<Button-1>", on_click)
 
         fields = ["ID", "Наименование", "Тип", "Рейтинг", "Юридический адрес", "ИНН",
@@ -159,10 +184,10 @@ class MainWindow:
 
     # --- Переходы на другие окна ---
     def open_materials(self):
-        MaterialsWindow(self.master)
+        MaterialsWindow(self.master, self.user)
 
     def open_services(self):
-        ServicesWindow(self.master)
+        ServicesWindow(self.master, self.user)
 
     def open_orders(self):
-        OrdersWindow(self.master)
+        OrdersWindow(self.master, self.user)

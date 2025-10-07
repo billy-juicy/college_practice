@@ -5,9 +5,10 @@ from ui.service_form import ServiceFormWindow
 from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class ServicesWindow(tk.Toplevel):
-    def __init__(self, master):
+    def __init__(self, master, user):
         super().__init__(master)
         self.master = master
+        self.user = user
         self.master.withdraw()
         self.title("Услуги")
         self.geometry("1400x500")

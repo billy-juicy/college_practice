@@ -6,13 +6,16 @@ from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 
 class OrdersWindow(tk.Toplevel):
-    def __init__(self, master):
+    def __init__(self, master, user):
         super().__init__(master)
         self.master = master
         self.master.withdraw()
         self.title("Заказы")
         self.geometry("1300x600")
         self.configure(bg=DEFAULT_BG)
+
+        self.partner_id = user[3] if user[2] == "partner" else None
+        self.user_role = user[2]
 
         tk.Label(self, text="Список заказов", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
@@ -46,14 +49,27 @@ class OrdersWindow(tk.Toplevel):
         self.tree.delete(*self.tree.get_children())
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
-            SELECT o.id, p.name, e.full_name, o.created_at, 
-                   o.confirmed, o.completed, o.total_cost
-            FROM orders o
-            JOIN partners p ON o.partner_id = p.id
-            JOIN employees e ON o.manager_id = e.id
-            ORDER BY o.created_at DESC
-        """)
+
+        if self.user_role == "partner" and self.partner_id:
+            cur.execute("""
+                SELECT o.id, p.name, e.full_name, o.created_at, 
+                       o.confirmed, o.completed, o.total_cost
+                FROM orders o
+                JOIN partners p ON o.partner_id = p.id
+                JOIN employees e ON o.manager_id = e.id
+                WHERE o.partner_id = ?
+                ORDER BY o.created_at DESC
+            """, (self.partner_id,))
+        else:
+            cur.execute("""
+                SELECT o.id, p.name, e.full_name, o.created_at, 
+                       o.confirmed, o.completed, o.total_cost
+                FROM orders o
+                JOIN partners p ON o.partner_id = p.id
+                JOIN employees e ON o.manager_id = e.id
+                ORDER BY o.created_at DESC
+            """)
+
         for row in cur.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()

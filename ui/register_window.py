@@ -83,8 +83,8 @@ class RegisterWindow:
             return "Введите корректный email"
 
         # Роль — только admin или manager
-        if data["role"].lower() not in ["admin", "manager"]:
-            return "Роль должна быть 'admin' или 'manager'"
+        if data["role"].lower() not in ["admin", "manager", "partner"]:
+            return "Роль должна быть 'admin' или 'manager' или 'partner'"
 
         return None  # Всё корректно
 

@@ -5,9 +5,10 @@ from ui.material_form import MaterialFormWindow
 from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class MaterialsWindow(tk.Toplevel):
-    def __init__(self, master):
+    def __init__(self, master, user):
         super().__init__(master)
         self.master = master
+        self.user = user
         self.master.withdraw()  # Скрываем главную форму
         self.title("Материалы")
         self.geometry("1300x500")

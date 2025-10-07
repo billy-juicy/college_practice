@@ -45,6 +45,7 @@ class LoginWindow:
         tk.Button(button_frame, text="Регистрация", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, width=12, command=self.open_register).pack(side="left", padx=5)
 
+    # login_window.py
     def login(self):
         email = self.email_entry.get().strip()
         password = self.password_entry.get().strip()
@@ -58,22 +59,33 @@ class LoginWindow:
             cur = conn.cursor()
             cur.execute("SELECT id, full_name, role, password FROM employees WHERE email=?", (email,))
             user = cur.fetchone()
+            if not user:
+                messagebox.showerror("Ошибка", "Пользователь не найден")
+                return
+
+            hashed = hashlib.sha256(password.encode()).hexdigest()
+            if user[3] != hashed:
+                messagebox.showerror("Ошибка", "Неверный пароль")
+                return
+
+            # Если роль partner, связываем с partner_id
+            partner_id = None
+            if user[2].lower() == "partner":
+                cur.execute("SELECT id FROM partners WHERE email=?", (email,))
+                res = cur.fetchone()
+                if res:
+                    partner_id = res[0]
+
+            # user = (id, full_name, role, partner_id)
+            user = (user[0], user[1], user[2].lower(), partner_id)
+
         except Exception as e:
             messagebox.showerror("Ошибка", f"Ошибка при обращении к базе: {e}")
             return
         finally:
             conn.close()
 
-        if not user:
-            messagebox.showerror("Ошибка", "Пользователь не найден")
-            return
-
-        hashed = hashlib.sha256(password.encode()).hexdigest()
-        if user[3] != hashed:
-            messagebox.showerror("Ошибка", "Неверный пароль")
-            return
-
-        # Успешный вход — переход на MainWindow
+        # Успешный вход
         self.master.destroy()
         import ui.main_window as main_module
         root = tk.Tk()
