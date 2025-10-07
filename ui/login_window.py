@@ -1,8 +1,11 @@
+import os
 import tkinter as tk
 from tkinter import messagebox
 import hashlib
 from logic.db_utils import get_connection
 from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
+from PIL import Image, ImageTk
+
 
 class LoginWindow:
     def __init__(self, master):
@@ -10,6 +13,18 @@ class LoginWindow:
         self.master.title("Чистая планета — Вход")
         self.master.geometry("400x300")
         self.master.configure(bg=DEFAULT_BG)
+
+        try:
+            icon_path = os.path.join("resources", "icon.png")
+            if os.path.exists(icon_path):
+                icon_image = Image.open(icon_path)
+                icon_image.thumbnail((64, 64), resample=Image.Resampling.LANCZOS)
+                self.icon_photo = ImageTk.PhotoImage(icon_image)
+                self.master.iconphoto(True, self.icon_photo)
+            else:
+                print(f"Иконка не найдена по пути: {icon_path}")
+        except Exception as e:
+            print(f"Не удалось загрузить иконку: {e}")
 
         # --- Email ---
         tk.Label(master, text="Email:", bg=DEFAULT_BG, font=FONT_MAIN).pack(pady=5)
