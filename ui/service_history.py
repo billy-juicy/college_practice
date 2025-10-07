@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from logic.data_fetcher import get_partner_service_history
+from logic.db_utils import get_connection
 from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class ServiceHistoryWindow(tk.Toplevel):
@@ -17,14 +17,11 @@ class ServiceHistoryWindow(tk.Toplevel):
         self.tree.heading("quantity", text="Количество")
         self.tree.heading("date", text="Дата выполнения")
 
-        # Настройка колонок
         self.tree.column("name", width=250, anchor="center")
         self.tree.column("quantity", width=100, anchor="center")
         self.tree.column("date", width=150, anchor="center")
-
         self.tree.pack(fill="both", expand=True, pady=10)
 
-        # Кнопка Закрыть
         tk.Button(self, text="Закрыть", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL, width=12,
                   command=self.destroy).pack(pady=10)
 
@@ -32,6 +29,16 @@ class ServiceHistoryWindow(tk.Toplevel):
 
     def load_data(self, partner_id):
         self.tree.delete(*self.tree.get_children())
-        data = get_partner_service_history(partner_id)
-        for d in data:
-            self.tree.insert("", "end", values=d)
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT s.name, os.quantity, o.final_payment_date
+            FROM orders o
+            JOIN order_services os ON o.id = os.order_id
+            JOIN services s ON os.service_id = s.id
+            WHERE o.partner_id = ? AND o.completed = 1
+            ORDER BY o.final_payment_date DESC
+        """, (partner_id,))
+        for name, quantity, date in cur.fetchall():
+            self.tree.insert("", "end", values=(name, quantity, date))
+        conn.close()
