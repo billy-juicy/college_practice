@@ -9,39 +9,42 @@ class OrdersWindow(tk.Toplevel):
     def __init__(self, master, user):
         super().__init__(master)
         self.master = master
+        self.user = user
+        self.role = user[2]
+        self.partner_id = user[3] if self.role == "partner" else None
+
         self.master.withdraw()
         self.title("Заказы")
-        self.geometry("1300x600")
+        self.geometry("1200x600")
         self.configure(bg=DEFAULT_BG)
-
-        self.partner_id = user[3] if user[2] == "partner" else None
-        self.user_role = user[2]
 
         tk.Label(self, text="Список заказов", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
         columns = ("id", "partner_name", "manager_name", "created_at", "confirmed", "completed", "total_cost")
-        display_names = ("ID", "Партнёр", "Менеджер", "Дата создания", "Подтверждён", "Выполнен", "Общая стоимость (₽)")
+        display_names = ("ID", "Партнёр", "Менеджер", "Дата создания", "Подтверждён", "Выполнен", "Стоимость (₽)")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         for col, disp in zip(columns, display_names):
             self.tree.heading(col, text=disp)
-            self.tree.column(col, width=160, anchor="center")
+            self.tree.column(col, width=150, anchor="center")
         self.tree.pack(fill="both", expand=True, pady=5)
         self.tree.bind("<Double-1>", self.edit_order_event)
 
-        # --- Панель кнопок ---
+        # Панель кнопок
         button_frame = tk.Frame(self, bg=DEFAULT_BG)
         button_frame.pack(pady=10)
 
-        tk.Button(button_frame, text="Добавить", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, width=12, command=self.add_order).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, width=12, command=self.edit_order).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, width=12, command=self.delete_order).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, width=12, command=self.load_orders).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Назад", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, width=12, command=self.go_back).pack(side="right", padx=5)
+        if self.role != "partner":
+            tk.Button(button_frame, text="Добавить", bg=ACCENT_COLOR, font=FONT_SMALL, width=12,
+                      command=self.add_order).pack(side="left", padx=5)
+            tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, font=FONT_SMALL, width=12,
+                      command=self.edit_order).pack(side="left", padx=5)
+            tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, font=FONT_SMALL, width=12,
+                      command=self.delete_order).pack(side="left", padx=5)
+
+        tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, font=FONT_SMALL, width=12,
+                  command=self.load_orders).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Назад", bg=ACCENT_COLOR, font=FONT_SMALL, width=12,
+                  command=self.go_back).pack(side="right", padx=5)
 
         self.load_orders()
 
@@ -50,9 +53,9 @@ class OrdersWindow(tk.Toplevel):
         conn = get_connection()
         cur = conn.cursor()
 
-        if self.user_role == "partner" and self.partner_id:
+        if self.role == "partner" and self.partner_id:
             cur.execute("""
-                SELECT o.id, p.name, e.full_name, o.created_at, 
+                SELECT o.id, p.name, e.full_name, o.created_at,
                        o.confirmed, o.completed, o.total_cost
                 FROM orders o
                 JOIN partners p ON o.partner_id = p.id
@@ -62,7 +65,7 @@ class OrdersWindow(tk.Toplevel):
             """, (self.partner_id,))
         else:
             cur.execute("""
-                SELECT o.id, p.name, e.full_name, o.created_at, 
+                SELECT o.id, p.name, e.full_name, o.created_at,
                        o.confirmed, o.completed, o.total_cost
                 FROM orders o
                 JOIN partners p ON o.partner_id = p.id
@@ -78,7 +81,8 @@ class OrdersWindow(tk.Toplevel):
         OrderFormWindow(self, on_save=self.load_orders)
 
     def edit_order_event(self, event):
-        self.edit_order()
+        if self.role != "partner":
+            self.edit_order()
 
     def edit_order(self):
         selected = self.tree.focus()
@@ -89,19 +93,22 @@ class OrdersWindow(tk.Toplevel):
         OrderFormWindow(self, order_id=order_id, on_save=self.load_orders)
 
     def delete_order(self):
+        if self.role == "partner":
+            messagebox.showwarning("Доступ запрещён", "Партнёрам нельзя удалять заказы.")
+            return
         selected = self.tree.focus()
         if not selected:
             messagebox.showwarning("Ошибка", "Выберите заказ для удаления")
             return
         order_id = self.tree.item(selected)["values"][0]
-        if not messagebox.askyesno("Подтверждение", "Вы действительно хотите удалить заказ?"):
+        if not messagebox.askyesno("Подтверждение", "Удалить заказ?"):
             return
         conn = get_connection()
         cur = conn.cursor()
         try:
             cur.execute("DELETE FROM orders WHERE id=?", (order_id,))
             conn.commit()
-            messagebox.showinfo("Успех", "Заказ успешно удалён")
+            messagebox.showinfo("Успех", "Заказ удалён.")
             self.load_orders()
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось удалить заказ: {e}")
