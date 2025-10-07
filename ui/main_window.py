@@ -1,16 +1,13 @@
 import tkinter as tk
-import os
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
+import os
 from logic.data_fetcher import get_partners
 from ui.partner_form import PartnerFormWindow
 from ui.service_history import ServiceHistoryWindow
-
-# Импорт окон для материалов, услуг и заказов
 from ui.materials_window import MaterialsWindow
 from ui.services_window import ServicesWindow
 from ui.orders_window import OrdersWindow
-
 from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class MainWindow:
@@ -18,10 +15,10 @@ class MainWindow:
         self.master = master
         self.user = user
         self.master.title("Чистая планета — Партнёры")
-        self.master.geometry("1920x600")
+        self.master.geometry("1200x700")
         self.master.configure(bg=DEFAULT_BG)
 
-        # --- Иконка приложения ---
+        # Иконка приложения
         try:
             icon_path = os.path.join("resources", "icon.png")
             if os.path.exists(icon_path):
@@ -29,12 +26,10 @@ class MainWindow:
                 icon_image.thumbnail((64, 64), resample=Image.Resampling.LANCZOS)
                 self.icon_photo = ImageTk.PhotoImage(icon_image)
                 self.master.iconphoto(True, self.icon_photo)
-            else:
-                print(f"Иконка не найдена по пути: {icon_path}")
         except Exception as e:
             print(f"Не удалось загрузить иконку: {e}")
 
-        # --- Логотип ---
+        # Логотип
         try:
             logo_path = os.path.join("resources", "icon.png")
             if os.path.exists(logo_path):
@@ -45,44 +40,24 @@ class MainWindow:
                 logo_image = logo_image.resize(new_size, resample=Image.Resampling.LANCZOS)
                 self.logo_photo = ImageTk.PhotoImage(logo_image)
                 tk.Label(master, image=self.logo_photo, bg=DEFAULT_BG).pack(pady=10)
-            else:
-                print(f"Логотип не найден по пути: {logo_path}")
         except Exception as e:
             print(f"Не удалось загрузить логотип: {e}")
 
-        # --- Приветствие ---
+        # Приветствие
         tk.Label(master, text=f"Добро пожаловать, {user[1]} ({user[2]})",
                  bg=DEFAULT_BG, font=FONT_MAIN).pack(pady=5)
 
-        # --- Treeview с партнёрами ---
-        columns = ("id", "name", "type", "rating", "legal_address", "inn",
-                   "director_name", "phone", "email", "logo_url")
-        display_names = ("ID", "Наименование", "Тип", "Рейтинг", "Юридический адрес", "ИНН",
-                         "ФИО руководителя", "Телефон", "Email", "Логотип")
-
-        self.tree = ttk.Treeview(master, columns=columns, show="headings")
-        for col, disp in zip(columns, display_names):
-            self.tree.heading(col, text=disp)
-            self.tree.column(col, width=150, anchor="center")
-        self.tree.pack(fill="both", expand=True, pady=10)
-        self.tree.bind("<Double-1>", self.edit_partner_event)
-
-        style = ttk.Style()
-        style.configure("Treeview", font=FONT_SMALL)
-        style.configure("Treeview.Heading", font=FONT_MAIN)
-
-        # --- Панель кнопок ---
+        # Панель кнопок
         button_frame = tk.Frame(master, bg=DEFAULT_BG)
         button_frame.pack(pady=5)
-
         tk.Button(button_frame, text="Добавить партнёра", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, command=self.add_partner).pack(side="left", padx=5)
         tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.edit_partner).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.delete_partner).pack(side="left", padx=5)
+                  font=FONT_SMALL, command=self.edit_selected_partner).pack(side="left", padx=5)
         tk.Button(button_frame, text="История услуг", bg=ACCENT_COLOR, fg="black",
-                  font=FONT_SMALL, command=self.open_history).pack(side="left", padx=5)
+                  font=FONT_SMALL, command=self.open_history_selected).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, command=self.delete_selected_partner).pack(side="left", padx=5)
         tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, command=self.load_partners).pack(side="left", padx=5)
         tk.Button(button_frame, text="Материалы", bg=ACCENT_COLOR, fg="black",
@@ -94,59 +69,95 @@ class MainWindow:
         tk.Button(button_frame, text="Выход", bg=ACCENT_COLOR, fg="black",
                   font=FONT_SMALL, command=self.master.destroy).pack(side="right", padx=5)
 
-        # Загрузка данных партнёров
+        # Область скролла для карточек
+        self.canvas = tk.Canvas(master, bg=DEFAULT_BG)
+        self.scrollbar = tk.Scrollbar(master, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas, bg=DEFAULT_BG)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.selected_card = None
         self.load_partners()
 
-    # --- Работа с партнёрами ---
+    # --- Загрузка партнёров ---
     def load_partners(self):
-        self.tree.delete(*self.tree.get_children())
-        for p in get_partners():
-            self.tree.insert("", "end", values=p)
+        # Очистка
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
 
+        for partner in get_partners():
+            self.add_partner_card(partner)
+
+    # --- Создание карточки партнёра ---
+    def add_partner_card(self, partner):
+        card = tk.Frame(self.scrollable_frame, bg="white", bd=1, relief="solid", padx=10, pady=5)
+        card.pack(fill="x", pady=5, padx=10)
+        card.partner_id = partner[0]
+        card.selected = False
+
+        def on_click(event, c=card):
+            if self.selected_card:
+                self.selected_card.config(bg="white")
+                self.selected_card.selected = False
+            c.config(bg="#d0f0d0")
+            c.selected = True
+            self.selected_card = c
+
+        # Проброс клика на всю карточку
+        card.bind("<Button-1>", on_click)
+
+        fields = ["ID", "Наименование", "Тип", "Рейтинг", "Юридический адрес", "ИНН",
+                  "ФИО руководителя", "Телефон", "Email", "Логотип"]
+        for i, value in enumerate(partner):
+            lbl = tk.Label(card, text=f"{fields[i]}: {value}", font=FONT_SMALL, bg="white", anchor="w")
+            lbl.pack(fill="x")
+            lbl.bind("<Button-1>", on_click)
+
+    # --- Кнопки сверху ---
     def add_partner(self):
         PartnerFormWindow(self.master, on_save=self.load_partners)
 
-    def edit_partner_event(self, event):
-        self.edit_partner()
-
-    def edit_partner(self):
-        selected = self.tree.focus()
-        if not selected:
-            messagebox.showwarning("Ошибка", "Выберите партнёра для редактирования")
+    def edit_selected_partner(self):
+        if not self.selected_card:
+            messagebox.showwarning("Ошибка", "Выберите партнёра")
             return
-        partner_id = self.tree.item(selected)["values"][0]
-        PartnerFormWindow(self.master, partner_id=partner_id, on_save=self.load_partners)
+        PartnerFormWindow(self.master, partner_id=self.selected_card.partner_id, on_save=self.load_partners)
 
-    def delete_partner(self):
-        selected = self.tree.focus()
-        if not selected:
-            messagebox.showwarning("Ошибка", "Выберите партнёра для удаления")
+    def open_history_selected(self):
+        if not self.selected_card:
+            messagebox.showwarning("Ошибка", "Выберите партнёра")
             return
-        partner_id = self.tree.item(selected)["values"][0]
+        ServiceHistoryWindow(self.master, self.selected_card.partner_id)
+
+    def delete_selected_partner(self):
+        if not self.selected_card:
+            messagebox.showwarning("Ошибка", "Выберите партнёра")
+            return
         if not messagebox.askyesno("Подтверждение", "Вы действительно хотите удалить партнёра?"):
             return
         from logic.db_utils import get_connection
         conn = get_connection()
         cur = conn.cursor()
         try:
-            cur.execute("DELETE FROM partners WHERE id=?", (partner_id,))
+            cur.execute("DELETE FROM partners WHERE id=?", (self.selected_card.partner_id,))
             conn.commit()
             messagebox.showinfo("Успех", "Партнёр успешно удалён")
             self.load_partners()
-        except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось удалить партнёра: {e}")
         finally:
             conn.close()
 
-    def open_history(self):
-        selected = self.tree.focus()
-        if not selected:
-            messagebox.showwarning("Ошибка", "Выберите партнёра")
-            return
-        partner_id = self.tree.item(selected)["values"][0]
-        ServiceHistoryWindow(self.master, partner_id)
-
-    # --- Переход на другие окна ---
+    # --- Переходы на другие окна ---
     def open_materials(self):
         MaterialsWindow(self.master)
 
