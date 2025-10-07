@@ -4,7 +4,6 @@ from logic.db_utils import get_connection
 from datetime import datetime
 from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
-
 class OrderFormWindow(tk.Toplevel):
     def __init__(self, master, order_id=None, on_save=None):
         super().__init__(master)
@@ -20,7 +19,7 @@ class OrderFormWindow(tk.Toplevel):
         self.manager_var = tk.StringVar()
         self.service_var = tk.StringVar()
         self.quantity_var = tk.StringVar()
-        self.total_cost_var = tk.StringVar()
+        self.total_cost_var = tk.StringVar(value="0.00")
 
         # --- Поля формы ---
         labels = [
@@ -59,6 +58,7 @@ class OrderFormWindow(tk.Toplevel):
         if self.order_id:
             self.load_order_data()
 
+    # --- Работа с комбобоксами ---
     def load_comboboxes(self):
         conn = get_connection()
         cur = conn.cursor()
@@ -86,15 +86,17 @@ class OrderFormWindow(tk.Toplevel):
 
         conn.close()
 
+    # --- Расчёт стоимости ---
     def calculate_total_cost(self):
         try:
-            qty = int(self.quantity_var.get())
+            quantity = int(self.quantity_var.get())
             _, cost_per_unit = self.services_map[self.service_var.get()]
-            total = qty * cost_per_unit
+            total = quantity * cost_per_unit
             self.total_cost_var.set(f"{total:.2f}")
         except Exception:
             messagebox.showwarning("Ошибка", "Выберите услугу и укажите корректное количество")
 
+    # --- Загрузка данных заказа для редактирования ---
     def load_order_data(self):
         conn = get_connection()
         cur = conn.cursor()
@@ -142,6 +144,48 @@ class OrderFormWindow(tk.Toplevel):
                     self.quantity_var.set(str(quantity))
                     break
 
+    # --- Работа с материалами ---
+    def check_stock(self, service_id, quantity):
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT m.name, m.stock_quantity, sm.quantity_used
+            FROM service_materials sm
+            JOIN materials m ON sm.material_id = m.id
+            WHERE sm.service_id=?
+        """, (service_id,))
+        for name, stock, qty_used in cur.fetchall():
+            if stock < qty_used * quantity:
+                conn.close()
+                return False, name
+        conn.close()
+        return True, ""
+
+    def consume_materials(self, service_id, quantity):
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT material_id, quantity_used FROM service_materials WHERE service_id=?", (service_id,))
+            for mat_id, qty_used in cur.fetchall():
+                total_used = qty_used * quantity
+                cur.execute("UPDATE materials SET stock_quantity = stock_quantity - ? WHERE id=?", (total_used, mat_id))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def return_materials(self, service_id, quantity):
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT material_id, quantity_used FROM service_materials WHERE service_id=?", (service_id,))
+            for mat_id, qty_used in cur.fetchall():
+                total_return = qty_used * quantity
+                cur.execute("UPDATE materials SET stock_quantity = stock_quantity + ? WHERE id=?", (total_return, mat_id))
+            conn.commit()
+        finally:
+            conn.close()
+
+    # --- Сохранение заказа ---
     def save_order(self):
         if not self.partner_var.get() or not self.manager_var.get() or not self.service_var.get():
             messagebox.showwarning("Ошибка", "Заполните все поля")
@@ -160,10 +204,23 @@ class OrderFormWindow(tk.Toplevel):
         service_id, cost_per_unit = self.services_map[self.service_var.get()]
         total_cost = quantity * cost_per_unit
 
+        # Проверка наличия материалов
+        ok, mat_name = self.check_stock(service_id, quantity)
+        if not ok:
+            messagebox.showerror("Ошибка", f"Недостаточно материала: {mat_name}")
+            return
+
         conn = get_connection()
         cur = conn.cursor()
         try:
             if self.order_id:
+                # Возврат материалов старого заказа
+                cur.execute("SELECT service_id, quantity FROM order_services WHERE order_id=?", (self.order_id,))
+                old_service = cur.fetchone()
+                if old_service:
+                    old_sid, old_qty = old_service
+                    self.return_materials(old_sid, old_qty)
+
                 cur.execute("""
                     UPDATE orders
                     SET partner_id=?, manager_id=?, total_cost=?, confirmed=1, completed=0
@@ -182,8 +239,11 @@ class OrderFormWindow(tk.Toplevel):
                 INSERT INTO order_services (order_id, service_id, quantity, cost_per_unit, total_cost)
                 VALUES (?, ?, ?, ?, ?)
             """, (order_id, service_id, quantity, cost_per_unit, total_cost))
-
             conn.commit()
+
+            # Списание материалов
+            self.consume_materials(service_id, quantity)
+
             messagebox.showinfo("Успех", "Заказ сохранён")
             if self.on_save:
                 self.on_save()
