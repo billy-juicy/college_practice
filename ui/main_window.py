@@ -1,4 +1,5 @@
 import tkinter as tk
+import os
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 from logic.data_fetcher import get_partners
@@ -10,7 +11,7 @@ from ui.materials_window import MaterialsWindow
 from ui.services_window import ServicesWindow
 from ui.orders_window import OrdersWindow
 
-from resources.constants import DEFAULT_BG, ALT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class MainWindow:
     def __init__(self, master, user):
@@ -22,18 +23,34 @@ class MainWindow:
 
         # --- Иконка приложения ---
         try:
-            self.master.iconphoto(True, tk.PhotoImage(file="resources/icon.png"))
-        except Exception:
-            print("Не удалось загрузить иконку")
+            icon_path = os.path.join("resources", "icon.png")
+            if os.path.exists(icon_path):
+                icon_image = Image.open(icon_path)
+                icon_image.thumbnail((64, 64), resample=Image.Resampling.LANCZOS)
+                self.icon_photo = ImageTk.PhotoImage(icon_image)
+                self.master.iconphoto(True, self.icon_photo)
+            else:
+                print(f"Иконка не найдена по пути: {icon_path}")
+        except Exception as e:
+            print(f"Не удалось загрузить иконку: {e}")
 
         # --- Логотип ---
         try:
-            logo_image = Image.open("resources/logo.png")
-            logo_photo = ImageTk.PhotoImage(logo_image)
-            tk.Label(master, image=logo_photo, bg=DEFAULT_BG).pack(pady=10)
-            self.logo_photo = logo_photo  # чтобы изображение не удалилось сборщиком мусора
-        except Exception:
-            print("Не удалось загрузить логотип")
+            logo_path = os.path.join("resources", "icon.png")
+            if os.path.exists(logo_path):
+                logo_image = Image.open(logo_path)
+                # Масштабируем до ширины 300px с сохранением пропорций
+                max_width = 300
+                ratio = max_width / logo_image.width
+                new_size = (int(logo_image.width * ratio), int(logo_image.height * ratio))
+                logo_image = logo_image.resize(new_size, resample=Image.Resampling.LANCZOS)
+
+                self.logo_photo = ImageTk.PhotoImage(logo_image)
+                tk.Label(master, image=self.logo_photo, bg=DEFAULT_BG).pack(pady=10)
+            else:
+                print(f"Логотип не найден по пути: {logo_path}")
+        except Exception as e:
+            print(f"Не удалось загрузить логотип: {e}")
 
         # --- Приветствие ---
         tk.Label(master, text=f"Добро пожаловать, {user[1]} ({user[2]})",

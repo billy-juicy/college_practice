@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-# db/fill_test_data.py
 import sys
 import hashlib
-from datetime import datetime
 from logic.db_utils import get_connection
 
 

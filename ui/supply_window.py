@@ -2,37 +2,44 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from logic.db_utils import get_connection
 from ui.supply_form import SupplyFormWindow
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 
-class SupplyWindow:
+class SupplyWindow(tk.Toplevel):
     def __init__(self, master):
+        super().__init__(master)
         self.master = master
-        self.master.title("Чистая планета — Поставки материалов")
-        self.master.geometry("1300x550")
+        self.master.withdraw()
+        self.title("Поставки материалов")
+        self.geometry("1300x550")
+        self.configure(bg=DEFAULT_BG)
 
-        tk.Label(master, text="Поставки материалов", font=("Arial", 14, "bold")).pack(pady=10)
+        tk.Label(self, text="Поставки материалов", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
         # --- Таблица ---
         columns = ("id", "material_id", "supplier_name", "quantity", "cost_per_unit",
                    "total_cost", "supply_date", "employee_name")
-        self.tree = ttk.Treeview(master, columns=columns, show="headings")
-
+        self.tree = ttk.Treeview(self, columns=columns, show="headings")
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=150, anchor="center")
-
         self.tree.pack(fill="both", expand=True, pady=10)
         self.tree.bind("<Double-1>", self.edit_supply_event)
 
         # --- Кнопки ---
-        button_frame = tk.Frame(master)
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
         button_frame.pack(pady=10)
 
-        tk.Button(button_frame, text="Добавить", command=self.add_supply).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Редактировать", command=self.edit_supply).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Удалить", command=self.delete_supply).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Обновить", command=self.load_supplies).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Назад", command=self.master.destroy).pack(side="right", padx=5)
+        tk.Button(button_frame, text="Добавить", bg=ACCENT_COLOR, font=FONT_SMALL,
+                  width=12, command=self.add_supply).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, font=FONT_SMALL,
+                  width=12, command=self.edit_supply).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, font=FONT_SMALL,
+                  width=12, command=self.delete_supply).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, font=FONT_SMALL,
+                  width=12, command=self.load_supplies).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Назад", bg=ACCENT_COLOR, font=FONT_SMALL,
+                  width=12, command=self.go_back).pack(side="right", padx=5)
 
         self.load_supplies()
 
@@ -53,7 +60,7 @@ class SupplyWindow:
         conn.close()
 
     def add_supply(self):
-        SupplyFormWindow(self.master, on_save=self.load_supplies)
+        SupplyFormWindow(self, on_save=self.load_supplies)
 
     def edit_supply_event(self, event):
         self.edit_supply()
@@ -64,7 +71,7 @@ class SupplyWindow:
             messagebox.showwarning("Ошибка", "Выберите поставку для редактирования")
             return
         supply_id = self.tree.item(selected)["values"][0]
-        SupplyFormWindow(self.master, supply_id=supply_id, on_save=self.load_supplies)
+        SupplyFormWindow(self, supply_id=supply_id, on_save=self.load_supplies)
 
     def delete_supply(self):
         selected = self.tree.focus()
@@ -87,3 +94,7 @@ class SupplyWindow:
             messagebox.showerror("Ошибка", f"Не удалось удалить поставку: {e}")
         finally:
             conn.close()
+
+    def go_back(self):
+        self.master.deiconify()
+        self.destroy()

@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from logic.db_utils import get_connection
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 
 class ServiceFormWindow(tk.Toplevel):
@@ -11,6 +12,7 @@ class ServiceFormWindow(tk.Toplevel):
         self.title("Добавить услугу" if service_id is None else "Редактировать услугу")
         self.geometry("500x550")
         self.resizable(False, False)
+        self.configure(bg=DEFAULT_BG)
 
         # --- Поля формы ---
         self.fields = {}
@@ -26,15 +28,21 @@ class ServiceFormWindow(tk.Toplevel):
             ("Количество персонала", "staff_count")
         ]
 
-        for i, (label, field) in enumerate(labels):
-            tk.Label(self, text=label).grid(row=i, column=0, sticky="w", padx=10, pady=5)
-            entry = tk.Entry(self, width=40)
-            entry.grid(row=i, column=1, padx=10, pady=5)
-            self.fields[field] = entry
+        for i, (label_text, field_name) in enumerate(labels):
+            tk.Label(self, text=label_text, bg=DEFAULT_BG, font=FONT_SMALL).grid(
+                row=i, column=0, sticky="w", padx=10, pady=5
+            )
+            self.fields[field_name] = tk.Entry(self, font=FONT_SMALL)
+            self.fields[field_name].grid(row=i, column=1, padx=10, pady=5)
 
-        # Кнопки
-        tk.Button(self, text="Сохранить", command=self.save_service).grid(row=len(labels), column=0, pady=15)
-        tk.Button(self, text="Отмена", command=self.destroy).grid(row=len(labels), column=1, pady=15)
+        # --- Панель кнопок ---
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
+        button_frame.grid(row=len(labels), column=0, columnspan=2, pady=15)
+
+        tk.Button(button_frame, text="Сохранить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.save_service).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Отмена", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.destroy).pack(side="left", padx=5)
 
         # Если редактирование
         if self.service_id:
@@ -58,6 +66,7 @@ class ServiceFormWindow(tk.Toplevel):
 
         for key, value in zip(self.fields.keys(), service):
             if value is not None:
+                self.fields[key].delete(0, tk.END)
                 self.fields[key].insert(0, value)
 
     def validate_fields(self):

@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from logic.db_utils import get_connection
 from ui.service_form import ServiceFormWindow
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class ServicesWindow(tk.Toplevel):
     def __init__(self, master):
@@ -10,8 +11,9 @@ class ServicesWindow(tk.Toplevel):
         self.master.withdraw()
         self.title("Услуги")
         self.geometry("1100x500")
+        self.configure(bg=DEFAULT_BG)
 
-        tk.Label(self, text="Список услуг", font=("Arial", 14, "bold")).pack(pady=10)
+        tk.Label(self, text="Список услуг", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
         columns = ("id", "code", "name", "type", "description", "min_cost", "time_norm", "estimated_cost")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
@@ -20,14 +22,25 @@ class ServicesWindow(tk.Toplevel):
             self.tree.column(col, width=130, anchor="center")
         self.tree.pack(fill="both", expand=True)
 
-        button_frame = tk.Frame(self)
+        # Стиль Treeview
+        style = ttk.Style()
+        style.configure("Treeview", font=FONT_SMALL)
+        style.configure("Treeview.Heading", font=FONT_MAIN)
+
+        # Панель кнопок
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
         button_frame.pack(pady=10)
 
-        tk.Button(button_frame, text="Добавить", command=self.add_service).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Редактировать", command=self.edit_service).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Удалить", command=self.delete_service).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Обновить", command=self.load_services).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Назад", command=self.go_back).pack(side="right", padx=5)
+        tk.Button(button_frame, text="Добавить", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL,
+                  width=12, command=self.add_service).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL,
+                  width=12, command=self.edit_service).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL,
+                  width=12, command=self.delete_service).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL,
+                  width=12, command=self.load_services).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Назад", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL,
+                  width=12, command=self.go_back).pack(side="right", padx=5)
 
         self.load_services()
 

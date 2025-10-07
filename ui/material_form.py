@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from logic.db_utils import get_connection
-
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class MaterialFormWindow(tk.Toplevel):
     def __init__(self, master, material_id=None, on_save=None):
@@ -11,6 +11,7 @@ class MaterialFormWindow(tk.Toplevel):
         self.title("Добавить материал" if material_id is None else "Редактировать материал")
         self.geometry("550x550")
         self.resizable(False, False)
+        self.configure(bg=DEFAULT_BG)
 
         # --- Поля формы ---
         self.fields = {}
@@ -27,14 +28,19 @@ class MaterialFormWindow(tk.Toplevel):
         ]
 
         for i, (label, field) in enumerate(labels):
-            tk.Label(self, text=label).grid(row=i, column=0, sticky="w", padx=10, pady=5)
-            entry = tk.Entry(self, width=40)
+            tk.Label(self, text=label, bg=DEFAULT_BG, font=FONT_MAIN).grid(row=i, column=0, sticky="w", padx=10, pady=5)
+            entry = tk.Entry(self, width=40, font=FONT_SMALL)
             entry.grid(row=i, column=1, padx=10, pady=5)
             self.fields[field] = entry
 
-        # Кнопки
-        tk.Button(self, text="Сохранить", command=self.save_material).grid(row=len(labels), column=0, pady=15)
-        tk.Button(self, text="Отмена", command=self.destroy).grid(row=len(labels), column=1, pady=15)
+        # --- Панель кнопок ---
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
+        button_frame.grid(row=len(labels), column=0, columnspan=2, pady=15)
+
+        tk.Button(button_frame, text="Сохранить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.save_material).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Отмена", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.destroy).pack(side="left", padx=5)
 
         # Если редактирование
         if self.material_id:

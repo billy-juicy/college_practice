@@ -1,4 +1,3 @@
-import sqlite3
 import math
 from logic.db_utils import get_connection
 

@@ -3,12 +3,14 @@ from tkinter import messagebox
 import hashlib
 import re
 from logic.db_utils import get_connection
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class RegisterWindow:
     def __init__(self, master):
         self.master = master
         self.master.title("Регистрация — Чистая планета")
-        self.master.geometry("400x650")
+        self.master.geometry("400x750")
+        self.master.configure(bg=DEFAULT_BG)
 
         # Поля регистрации
         self.fields = {}
@@ -26,14 +28,19 @@ class RegisterWindow:
         ]
 
         for text, key in labels:
-            tk.Label(master, text=text).pack(pady=3)
-            entry = tk.Entry(master, width=30, show="*" if key=="password" else None)
-            entry.pack()
+            tk.Label(master, text=text, bg=DEFAULT_BG, font=FONT_MAIN).pack(pady=5)
+            entry = tk.Entry(master, width=30, font=FONT_SMALL, show="*" if key=="password" else None)
+            entry.pack(pady=2)
             self.fields[key] = entry
 
-        # Кнопки
-        tk.Button(master, text="Зарегистрироваться", command=self.register).pack(pady=10)
-        tk.Button(master, text="Назад", command=self.back_to_login).pack()
+        # --- Панель кнопок ---
+        button_frame = tk.Frame(master, bg=DEFAULT_BG)
+        button_frame.pack(pady=20)
+
+        tk.Button(button_frame, text="Зарегистрироваться", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=16, command=self.register).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Назад", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=8, command=self.back_to_login).pack(side="left", padx=5)
 
     def validate_fields(self, data):
         # Проверка ФИО — должно быть хотя бы два слова
@@ -67,35 +74,29 @@ class RegisterWindow:
         return None  # Всё корректно
 
     def register(self):
-        # Сбор данных
         data = {k: v.get().strip() for k, v in self.fields.items()}
 
-        # Проверка обязательных полей
         mandatory = ["full_name", "email", "password", "role"]
         if any(not data[m] for m in mandatory):
             messagebox.showwarning("Ошибка", "Обязательные поля не заполнены")
             return
 
-        # Валидация
         error = self.validate_fields(data)
         if error:
             messagebox.showerror("Ошибка ввода", error)
             return
 
-        # Хешируем пароль
         data["password"] = hashlib.sha256(data["password"].encode()).hexdigest()
 
         try:
             conn = get_connection()
             cur = conn.cursor()
 
-            # Проверка уникальности email
             cur.execute("SELECT id FROM employees WHERE email=?", (data["email"],))
             if cur.fetchone():
                 messagebox.showerror("Ошибка", "Такой email уже зарегистрирован")
                 return
 
-            # Сохранение в базу
             cur.execute("""
                 INSERT INTO employees 
                 (full_name, birth_date, passport, bank_account, position, health_status, phone, email, role, password)

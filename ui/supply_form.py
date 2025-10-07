@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from logic.db_utils import get_connection
-
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class SupplyFormWindow(tk.Toplevel):
     def __init__(self, master, supply_id=None, on_save=None):
@@ -11,6 +11,7 @@ class SupplyFormWindow(tk.Toplevel):
         self.title("Добавить поставку" if supply_id is None else "Редактировать поставку")
         self.geometry("500x500")
         self.resizable(False, False)
+        self.configure(bg=DEFAULT_BG)
 
         self.fields = {}
 
@@ -33,23 +34,29 @@ class SupplyFormWindow(tk.Toplevel):
             ("Сотрудник", "employee_id")
         ]
 
-        for i, (label, field) in enumerate(labels):
-            tk.Label(self, text=label).grid(row=i, column=0, sticky="w", padx=10, pady=5)
-            if field == "material_id":
-                cb = ttk.Combobox(self, values=[f"{m[0]} — {m[1]}" for m in materials], state="readonly")
-                self.fields[field] = cb
+        for i, (label_text, field_name) in enumerate(labels):
+            tk.Label(self, text=label_text, bg=DEFAULT_BG, font=FONT_SMALL).grid(row=i, column=0, sticky="w", padx=10, pady=5)
+            if field_name == "material_id":
+                cb = ttk.Combobox(self, values=[f"{m[0]} — {m[1]}" for m in materials], state="readonly", font=FONT_SMALL)
                 cb.grid(row=i, column=1, padx=10, pady=5)
-            elif field == "employee_id":
-                cb = ttk.Combobox(self, values=[f"{e[0]} — {e[1]}" for e in employees], state="readonly")
-                self.fields[field] = cb
+                self.fields[field_name] = cb
+            elif field_name == "employee_id":
+                cb = ttk.Combobox(self, values=[f"{e[0]} — {e[1]}" for e in employees], state="readonly", font=FONT_SMALL)
                 cb.grid(row=i, column=1, padx=10, pady=5)
+                self.fields[field_name] = cb
             else:
-                entry = tk.Entry(self, width=40)
+                entry = tk.Entry(self, width=40, font=FONT_SMALL)
                 entry.grid(row=i, column=1, padx=10, pady=5)
-                self.fields[field] = entry
+                self.fields[field_name] = entry
 
-        tk.Button(self, text="Сохранить", command=self.save_supply).grid(row=len(labels), column=0, pady=15)
-        tk.Button(self, text="Отмена", command=self.destroy).grid(row=len(labels), column=1, pady=15)
+        # --- Кнопки ---
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
+        button_frame.grid(row=len(labels), column=0, columnspan=2, pady=15)
+
+        tk.Button(button_frame, text="Сохранить", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL,
+                  width=12, command=self.save_supply).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Отмена", bg=ACCENT_COLOR, fg="black", font=FONT_SMALL,
+                  width=12, command=self.destroy).pack(side="left", padx=5)
 
         if self.supply_id:
             self.load_supply_data()
@@ -80,9 +87,12 @@ class SupplyFormWindow(tk.Toplevel):
         data = {}
         for key, widget in self.fields.items():
             value = widget.get().strip()
-            if key in ["quantity", "cost_per_unit"] and not value.replace('.', '', 1).isdigit():
-                messagebox.showwarning("Ошибка", f"Поле '{key}' должно быть числом")
-                return None
+            if key in ["quantity", "cost_per_unit"]:
+                try:
+                    value = float(value)
+                except ValueError:
+                    messagebox.showwarning("Ошибка", f"Поле '{key}' должно быть числом")
+                    return None
             data[key] = value
 
         required = ["material_id", "supplier_name", "quantity", "cost_per_unit", "supply_date", "employee_id"]

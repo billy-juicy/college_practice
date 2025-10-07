@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from logic.db_utils import get_connection
 from ui.material_form import MaterialFormWindow
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class MaterialsWindow(tk.Toplevel):
     def __init__(self, master):
@@ -10,10 +11,11 @@ class MaterialsWindow(tk.Toplevel):
         self.master.withdraw()  # Скрываем главную форму
         self.title("Материалы")
         self.geometry("900x500")
+        self.configure(bg=DEFAULT_BG)
 
-        tk.Label(self, text="Список материалов", font=("Arial", 14, "bold")).pack(pady=10)
+        tk.Label(self, text="Список материалов", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
-        # Таблица
+        # --- Таблица ---
         columns = ("id", "name", "type", "quantity_per_package", "unit", "cost", "stock_quantity")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         for col in columns:
@@ -21,15 +23,24 @@ class MaterialsWindow(tk.Toplevel):
             self.tree.column(col, width=120, anchor="center")
         self.tree.pack(fill="both", expand=True)
 
-        # Панель кнопок
-        button_frame = tk.Frame(self)
+        style = ttk.Style()
+        style.configure("Treeview", font=FONT_SMALL)
+        style.configure("Treeview.Heading", font=FONT_MAIN)
+
+        # --- Панель кнопок ---
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
         button_frame.pack(pady=10)
 
-        tk.Button(button_frame, text="Добавить", command=self.add_material).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Редактировать", command=self.edit_material).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Удалить", command=self.delete_material).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Обновить", command=self.load_materials).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Назад", command=self.go_back).pack(side="right", padx=5)
+        tk.Button(button_frame, text="Добавить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.add_material).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.edit_material).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.delete_material).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.load_materials).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Назад", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.go_back).pack(side="right", padx=5)
 
         self.load_materials()
 

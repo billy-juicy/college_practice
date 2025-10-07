@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from logic.db_utils import get_connection
 from datetime import datetime
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 
 class OrderFormWindow(tk.Toplevel):
@@ -12,36 +13,44 @@ class OrderFormWindow(tk.Toplevel):
         self.title("Добавить заказ" if order_id is None else "Редактировать заказ")
         self.geometry("600x500")
         self.resizable(False, False)
+        self.configure(bg=DEFAULT_BG)
 
-        # --- Инициализация полей ---
+        # --- Инициализация переменных ---
         self.partner_var = tk.StringVar()
         self.manager_var = tk.StringVar()
         self.service_var = tk.StringVar()
         self.quantity_var = tk.StringVar()
         self.total_cost_var = tk.StringVar()
 
-        tk.Label(self, text="Партнёр").grid(row=0, column=0, sticky="w", padx=10, pady=5)
-        self.partner_cb = ttk.Combobox(self, textvariable=self.partner_var, state="readonly")
-        self.partner_cb.grid(row=0, column=1, padx=10, pady=5)
+        # --- Поля формы ---
+        labels = [
+            ("Партнёр", self.partner_var),
+            ("Менеджер", self.manager_var),
+            ("Услуга", self.service_var),
+            ("Количество", self.quantity_var),
+            ("Общая стоимость (₽)", self.total_cost_var)
+        ]
 
-        tk.Label(self, text="Менеджер").grid(row=1, column=0, sticky="w", padx=10, pady=5)
-        self.manager_cb = ttk.Combobox(self, textvariable=self.manager_var, state="readonly")
-        self.manager_cb.grid(row=1, column=1, padx=10, pady=5)
-
-        tk.Label(self, text="Услуга").grid(row=2, column=0, sticky="w", padx=10, pady=5)
-        self.service_cb = ttk.Combobox(self, textvariable=self.service_var, state="readonly")
-        self.service_cb.grid(row=2, column=1, padx=10, pady=5)
-
-        tk.Label(self, text="Количество").grid(row=3, column=0, sticky="w", padx=10, pady=5)
-        tk.Entry(self, textvariable=self.quantity_var).grid(row=3, column=1, padx=10, pady=5)
-
-        tk.Label(self, text="Общая стоимость (₽)").grid(row=4, column=0, sticky="w", padx=10, pady=5)
-        tk.Label(self, textvariable=self.total_cost_var).grid(row=4, column=1, sticky="w", padx=10, pady=5)
+        for i, (text, var) in enumerate(labels):
+            tk.Label(self, text=text, font=FONT_MAIN, bg=DEFAULT_BG).grid(row=i, column=0, sticky="w", padx=10, pady=5)
+            if text in ["Партнёр", "Менеджер", "Услуга"]:
+                entry = ttk.Combobox(self, textvariable=var, state="readonly", font=FONT_SMALL)
+            elif text == "Общая стоимость (₽)":
+                entry = tk.Label(self, textvariable=var, font=FONT_SMALL, bg=DEFAULT_BG)
+            else:
+                entry = tk.Entry(self, textvariable=var, font=FONT_SMALL)
+            entry.grid(row=i, column=1, padx=10, pady=5)
 
         # --- Кнопки ---
-        tk.Button(self, text="Рассчитать", command=self.calculate_total_cost).grid(row=5, column=0, pady=10)
-        tk.Button(self, text="Сохранить", command=self.save_order).grid(row=6, column=0, pady=10)
-        tk.Button(self, text="Отмена", command=self.destroy).grid(row=6, column=1, pady=10)
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
+        button_frame.grid(row=6, column=0, columnspan=2, pady=15)
+
+        tk.Button(button_frame, text="Рассчитать", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.calculate_total_cost).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Сохранить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.save_order).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Отмена", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.destroy).pack(side="left", padx=5)
 
         # Загрузка данных в списки
         self.load_comboboxes()
@@ -58,18 +67,21 @@ class OrderFormWindow(tk.Toplevel):
         cur.execute("SELECT id, name FROM partners")
         partners = cur.fetchall()
         self.partners_map = {f"{name} (ID {pid})": pid for pid, name in partners}
+        self.partner_cb = self.nametowidget(self.grid_slaves(row=0, column=1)[0])
         self.partner_cb["values"] = list(self.partners_map.keys())
 
         # Менеджеры
         cur.execute("SELECT id, full_name FROM employees WHERE role='manager'")
         managers = cur.fetchall()
         self.managers_map = {f"{name} (ID {mid})": mid for mid, name in managers}
+        self.manager_cb = self.nametowidget(self.grid_slaves(row=1, column=1)[0])
         self.manager_cb["values"] = list(self.managers_map.keys())
 
         # Услуги
         cur.execute("SELECT id, name, COALESCE(estimated_cost, min_cost, 0) FROM services")
         services = cur.fetchall()
         self.services_map = {f"{name} (₽{cost:.2f})": (sid, cost) for sid, name, cost in services}
+        self.service_cb = self.nametowidget(self.grid_slaves(row=2, column=1)[0])
         self.service_cb["values"] = list(self.services_map.keys())
 
         conn.close()
@@ -87,11 +99,8 @@ class OrderFormWindow(tk.Toplevel):
         conn = get_connection()
         cur = conn.cursor()
 
-        # Загружаем основной заказ
-        cur.execute("""
-            SELECT partner_id, manager_id, total_cost
-            FROM orders WHERE id=?
-        """, (self.order_id,))
+        # Основной заказ
+        cur.execute("SELECT partner_id, manager_id, total_cost FROM orders WHERE id=?", (self.order_id,))
         row = cur.fetchone()
         if not row:
             messagebox.showerror("Ошибка", "Заказ не найден")
@@ -101,13 +110,13 @@ class OrderFormWindow(tk.Toplevel):
 
         partner_id, manager_id, total = row
 
-        # Устанавливаем партнёра
+        # Партнёр
         for key, value in self.partners_map.items():
             if value == partner_id:
                 self.partner_var.set(key)
                 break
 
-        # Устанавливаем менеджера
+        # Менеджер
         for key, value in self.managers_map.items():
             if value == manager_id:
                 self.manager_var.set(key)
@@ -115,7 +124,7 @@ class OrderFormWindow(tk.Toplevel):
 
         self.total_cost_var.set(f"{total:.2f}" if total else "0.00")
 
-        # Загружаем услугу и количество
+        # Услуга и количество
         cur.execute("""
             SELECT s.id, s.name, COALESCE(s.estimated_cost, s.min_cost, 0), os.quantity
             FROM order_services os
@@ -127,7 +136,6 @@ class OrderFormWindow(tk.Toplevel):
 
         if order_service:
             sid, name, cost, quantity = order_service
-            # Находим ключ услуги в services_map
             for key, (service_id, _) in self.services_map.items():
                 if service_id == sid:
                     self.service_var.set(key)
@@ -156,24 +164,20 @@ class OrderFormWindow(tk.Toplevel):
         cur = conn.cursor()
         try:
             if self.order_id:
-                # Обновляем заказ
                 cur.execute("""
                     UPDATE orders
                     SET partner_id=?, manager_id=?, total_cost=?, confirmed=1, completed=0
                     WHERE id=?
                 """, (partner_id, manager_id, total_cost, self.order_id))
                 order_id = self.order_id
-                # Удаляем старые услуги
                 cur.execute("DELETE FROM order_services WHERE order_id=?", (order_id,))
             else:
-                # Создаём новый заказ
                 cur.execute("""
                     INSERT INTO orders (partner_id, manager_id, total_cost, confirmed, completed, created_at)
                     VALUES (?, ?, ?, 1, 0, ?)
                 """, (partner_id, manager_id, total_cost, datetime.now()))
                 order_id = cur.lastrowid
 
-            # Добавляем текущую услугу
             cur.execute("""
                 INSERT INTO order_services (order_id, service_id, quantity, cost_per_unit, total_cost)
                 VALUES (?, ?, ?, ?, ?)

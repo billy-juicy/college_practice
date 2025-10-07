@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from logic.db_utils import get_connection
 from ui.order_form import OrderFormWindow
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
+
 
 class OrdersWindow(tk.Toplevel):
     def __init__(self, master):
@@ -10,25 +12,32 @@ class OrdersWindow(tk.Toplevel):
         self.master.withdraw()
         self.title("Заказы")
         self.geometry("1300x600")
+        self.configure(bg=DEFAULT_BG)
 
-        tk.Label(self, text="Список заказов", font=("Arial", 14, "bold")).pack(pady=10)
+        tk.Label(self, text="Список заказов", font=FONT_MAIN, bg=DEFAULT_BG).pack(pady=10)
 
         columns = ("id", "partner_name", "manager_name", "created_at", "confirmed", "completed", "total_cost")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=160, anchor="center")
-        self.tree.pack(fill="both", expand=True)
+        self.tree.pack(fill="both", expand=True, pady=5)
         self.tree.bind("<Double-1>", self.edit_order_event)
 
-        button_frame = tk.Frame(self)
+        # --- Панель кнопок ---
+        button_frame = tk.Frame(self, bg=DEFAULT_BG)
         button_frame.pack(pady=10)
 
-        tk.Button(button_frame, text="Добавить", command=self.add_order).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Редактировать", command=self.edit_order).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Удалить", command=self.delete_order).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Обновить", command=self.load_orders).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Назад", command=self.go_back).pack(side="right", padx=5)
+        tk.Button(button_frame, text="Добавить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.add_order).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Редактировать", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.edit_order).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Удалить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.delete_order).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Обновить", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.load_orders).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Назад", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.go_back).pack(side="right", padx=5)
 
         self.load_orders()
 

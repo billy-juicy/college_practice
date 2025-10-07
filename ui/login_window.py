@@ -2,26 +2,33 @@ import tkinter as tk
 from tkinter import messagebox
 import hashlib
 from logic.db_utils import get_connection
+from resources.constants import DEFAULT_BG, ACCENT_COLOR, FONT_MAIN, FONT_SMALL
 
 class LoginWindow:
     def __init__(self, master):
         self.master = master
         self.master.title("Чистая планета — Вход")
         self.master.geometry("400x300")
+        self.master.configure(bg=DEFAULT_BG)
 
-        # Email
-        tk.Label(master, text="Email:").pack(pady=5)
-        self.email_entry = tk.Entry(master, width=30)
-        self.email_entry.pack()
+        # --- Email ---
+        tk.Label(master, text="Email:", bg=DEFAULT_BG, font=FONT_MAIN).pack(pady=5)
+        self.email_entry = tk.Entry(master, width=30, font=FONT_SMALL)
+        self.email_entry.pack(pady=5)
 
-        # Пароль
-        tk.Label(master, text="Пароль:").pack(pady=5)
-        self.password_entry = tk.Entry(master, show="*", width=30)
-        self.password_entry.pack()
+        # --- Пароль ---
+        tk.Label(master, text="Пароль:", bg=DEFAULT_BG, font=FONT_MAIN).pack(pady=5)
+        self.password_entry = tk.Entry(master, show="*", width=30, font=FONT_SMALL)
+        self.password_entry.pack(pady=5)
 
-        # Кнопки
-        tk.Button(master, text="Войти", command=self.login).pack(pady=10)
-        tk.Button(master, text="Регистрация", command=self.open_register).pack()
+        # --- Панель кнопок ---
+        button_frame = tk.Frame(master, bg=DEFAULT_BG)
+        button_frame.pack(pady=15)
+
+        tk.Button(button_frame, text="Войти", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.login).pack(side="left", padx=5)
+        tk.Button(button_frame, text="Регистрация", bg=ACCENT_COLOR, fg="black",
+                  font=FONT_SMALL, width=12, command=self.open_register).pack(side="left", padx=5)
 
     def login(self):
         email = self.email_entry.get().strip()
