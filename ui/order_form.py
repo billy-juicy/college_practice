@@ -54,17 +54,20 @@ class OrderFormWindow(tk.Toplevel):
         conn = get_connection()
         cur = conn.cursor()
 
+        # Партнёры
         cur.execute("SELECT id, name FROM partners")
         partners = cur.fetchall()
         self.partners_map = {f"{name} (ID {pid})": pid for pid, name in partners}
         self.partner_cb["values"] = list(self.partners_map.keys())
 
+        # Менеджеры
         cur.execute("SELECT id, full_name FROM employees WHERE role='manager'")
         managers = cur.fetchall()
         self.managers_map = {f"{name} (ID {mid})": mid for mid, name in managers}
         self.manager_cb["values"] = list(self.managers_map.keys())
 
-        cur.execute("SELECT id, name, (material_cost + labor_cost) FROM services")
+        # Услуги
+        cur.execute("SELECT id, name, COALESCE(estimated_cost, min_cost, 0) FROM services")
         services = cur.fetchall()
         self.services_map = {f"{name} (₽{cost:.2f})": (sid, cost) for sid, name, cost in services}
         self.service_cb["values"] = list(self.services_map.keys())
@@ -83,26 +86,53 @@ class OrderFormWindow(tk.Toplevel):
     def load_order_data(self):
         conn = get_connection()
         cur = conn.cursor()
+
+        # Загружаем основной заказ
         cur.execute("""
             SELECT partner_id, manager_id, total_cost
             FROM orders WHERE id=?
         """, (self.order_id,))
         row = cur.fetchone()
-        conn.close()
-
         if not row:
             messagebox.showerror("Ошибка", "Заказ не найден")
             self.destroy()
+            conn.close()
             return
 
-        pid, mid, total = row
-        for k, v in self.partners_map.items():
-            if v == pid:
-                self.partner_var.set(k)
-        for k, v in self.managers_map.items():
-            if v == mid:
-                self.manager_var.set(k)
+        partner_id, manager_id, total = row
+
+        # Устанавливаем партнёра
+        for key, value in self.partners_map.items():
+            if value == partner_id:
+                self.partner_var.set(key)
+                break
+
+        # Устанавливаем менеджера
+        for key, value in self.managers_map.items():
+            if value == manager_id:
+                self.manager_var.set(key)
+                break
+
         self.total_cost_var.set(f"{total:.2f}" if total else "0.00")
+
+        # Загружаем услугу и количество
+        cur.execute("""
+            SELECT s.id, s.name, COALESCE(s.estimated_cost, s.min_cost, 0), os.quantity
+            FROM order_services os
+            JOIN services s ON os.service_id = s.id
+            WHERE os.order_id=?
+        """, (self.order_id,))
+        order_service = cur.fetchone()
+        conn.close()
+
+        if order_service:
+            sid, name, cost, quantity = order_service
+            # Находим ключ услуги в services_map
+            for key, (service_id, _) in self.services_map.items():
+                if service_id == sid:
+                    self.service_var.set(key)
+                    self.quantity_var.set(str(quantity))
+                    break
 
     def save_order(self):
         if not self.partner_var.get() or not self.manager_var.get() or not self.service_var.get():
@@ -126,16 +156,28 @@ class OrderFormWindow(tk.Toplevel):
         cur = conn.cursor()
         try:
             if self.order_id:
+                # Обновляем заказ
                 cur.execute("""
                     UPDATE orders
-                    SET partner_id=?, manager_id=?, total_cost=?, completed=0, confirmed=1
+                    SET partner_id=?, manager_id=?, total_cost=?, confirmed=1, completed=0
                     WHERE id=?
                 """, (partner_id, manager_id, total_cost, self.order_id))
+                order_id = self.order_id
+                # Удаляем старые услуги
+                cur.execute("DELETE FROM order_services WHERE order_id=?", (order_id,))
             else:
+                # Создаём новый заказ
                 cur.execute("""
                     INSERT INTO orders (partner_id, manager_id, total_cost, confirmed, completed, created_at)
                     VALUES (?, ?, ?, 1, 0, ?)
                 """, (partner_id, manager_id, total_cost, datetime.now()))
+                order_id = cur.lastrowid
+
+            # Добавляем текущую услугу
+            cur.execute("""
+                INSERT INTO order_services (order_id, service_id, quantity, cost_per_unit, total_cost)
+                VALUES (?, ?, ?, ?, ?)
+            """, (order_id, service_id, quantity, cost_per_unit, total_cost))
 
             conn.commit()
             messagebox.showinfo("Успех", "Заказ сохранён")
