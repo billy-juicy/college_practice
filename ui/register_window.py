@@ -38,7 +38,7 @@ class RegisterWindow:
             ("Состояние здоровья", "health_status"),
             ("Телефон (+7XXXXXXXXXX)", "phone"),
             ("Email", "email"),
-            ("Роль (admin/manager)", "role"),
+            ("Роль (admin/manager/partner)", "role"),
             ("Пароль", "password")
         ]
 
